@@ -1,7 +1,7 @@
 {
   "name": "wikimasters-enhanced",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Unofficial enhanced interface for wiki-masters.com (browser extension)",
   "type": "module",
   "repository": {

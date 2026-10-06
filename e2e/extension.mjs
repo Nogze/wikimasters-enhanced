@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const OUT = process.env.OUT ?? fileURLToPath(new URL('../.shots', import.meta.url));
-const EXT = fileURLToPath(new URL('../dist', import.meta.url));
+const EXT = process.env.EXT ?? fileURLToPath(new URL('../dist', import.meta.url));
 mkdirSync(OUT, { recursive: true });
 const USER = '0f6b1d3e-1111-4c2a-9d7e-123456789abc';
 const errors = [];

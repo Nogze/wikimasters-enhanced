@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const OUT = process.env.OUT ?? fileURLToPath(new URL('../.shots', import.meta.url));
-const EXT = fileURLToPath(new URL('../dist', import.meta.url));
+const EXT = process.env.EXT ?? fileURLToPath(new URL('../dist', import.meta.url));
 mkdirSync(OUT, { recursive: true });
 const USER = '0f6b1d3e-1111-4c2a-9d7e-123456789abc';
 const FRIEND = '0f6b1d3e-2222-4c2a-9d7e-123456789abc';
@@ -271,8 +271,10 @@ await page.fill('.tagedit input', 'à échanger');
 await page.press('.tagedit input', 'Enter');
 check(await seen('.tagchip.on:has-text("à échanger")'), 'tag created and set');
 await page.click('.panel button[aria-label="Verrouiller"]');
-await page.waitForTimeout(1500);
-check(tags.some((t) => t.name === '[LOCKED]') && [...cardTags].some((k) => k.endsWith(tags.find((t) => t.name === '[LOCKED]').id)), 'lock = [LOCKED] tag on the account');
+// Locking creates the [LOCKED] tag (first time), then tags the card: two requests.
+const locked = () => tags.some((t) => t.name === '[LOCKED]') && [...cardTags].some((k) => k.endsWith(tags.find((t) => t.name === '[LOCKED]').id));
+for (let k = 0; k < 40 && !locked(); k++) await page.waitForTimeout(250);
+check(locked(), 'lock = [LOCKED] tag on the account');
 await shot('collection');
 
 // battles: the list, a challenge to a friend

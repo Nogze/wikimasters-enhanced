@@ -2,7 +2,6 @@
   "manifest_version": 3,
   "name": "Wikimasters Enhanced",
   "short_name": "WM Enhanced",
-  "version": "0.1.0",
   "description": "Interface non officielle pour wiki-masters.com : ouvertures de paquets en 3D, collection, marché, échanges, batailles. Vous jouez avec votre compte wiki-masters, sur leurs serveurs.",
   "permissions": [
     "storage",

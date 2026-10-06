@@ -10,6 +10,8 @@ import { getCalls } from './metrics';
 
 export const SNIPE_LEFT = 10_000;
 export const LATENCY_FACTOR = 3;
+/** Never less than this (ms): timers and the network jitter even when the server answers at once. */
+export const MIN_MARGIN = 150;
 
 export function latency(): number {
   const recent = getCalls()

@@ -6,6 +6,7 @@
 
 const MODE = 'wme-mode';
 const BYPASS = 'wme-bypass';
+const FAILED = 'wme-failed';
 const OFFICIAL_ONLY = /^\/(login|signup|register|auth|reset-password|forgot-password|legal|cgu|cgv|privacy|terms|mentions)/;
 
 function bypassOnce() {
@@ -47,6 +48,33 @@ function switchBackButton() {
       location.href = '/';
     });
     document.body.appendChild(b);
+    // The client failed to start last time: say so, above the button.
+    let failed = null;
+    try {
+      failed = sessionStorage.getItem(FAILED);
+      sessionStorage.removeItem(FAILED);
+    } catch {
+      /* storage blocked */
+    }
+    if (failed) {
+      const n = document.createElement('div');
+      n.id = 'wme-failed';
+      n.textContent = `Wikimasters Enhanced n’a pas pu démarrer (${failed}). Dans chrome://extensions, chargez le dossier dist (ou le zip de la release, décompressé), puis rechargez l’extension.`;
+      Object.assign(n.style, {
+        position: 'fixed',
+        right: '16px',
+        bottom: '64px',
+        zIndex: '2147483647',
+        maxWidth: '360px',
+        padding: '10px 14px',
+        borderRadius: '10px',
+        font: '500 13px/1.4 system-ui, sans-serif',
+        color: '#ffd0d6',
+        background: '#2a1219',
+        border: '1px solid #5a2232',
+      });
+      document.body.appendChild(n);
+    }
   };
   if (document.body) add();
   else document.addEventListener('DOMContentLoaded', add, { once: true });
@@ -63,7 +91,13 @@ function takeOver() {
   el('link', { rel: 'stylesheet', href: chrome.runtime.getURL('client/client.css') });
   document.documentElement.dataset.theme = 'dark';
   import(chrome.runtime.getURL('client/main.js')).catch((e) => {
+    // Back to the official page, saying why (shown next to the switch button).
     console.error('[Wikimasters Enhanced] client failed to load', e);
+    try {
+      sessionStorage.setItem(FAILED, String(e?.message ?? e));
+    } catch {
+      /* storage blocked */
+    }
     localStorage.setItem(MODE, 'original');
     location.reload();
   });

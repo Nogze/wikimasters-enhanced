@@ -19,7 +19,7 @@ Works in Chrome, Edge, Brave and other Chromium browsers.
      ```
      The extension is then in the `dist` folder.
 2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
-3. Click **Load unpacked** and choose the folder that contains `manifest.json`.
+3. Click **Load unpacked** and choose the unzipped release folder, or `dist` if you built it (not `extension`, which only holds part of the sources).
 4. Go to [www.wiki-masters.com](https://www.wiki-masters.com) and sign in as usual: the new interface replaces theirs.
 
 To update, replace the folder's contents with the new version (or `git pull && npm run build`), then click the reload icon on the extension's card in `chrome://extensions`.

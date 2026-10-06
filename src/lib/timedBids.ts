@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { ApiError, prepareRequest } from './api';
 import * as market from './market';
 import { refreshBalance } from './account';
-import { LATENCY_FACTOR, latency, runAt, SNIPE_LEFT, type Fired } from './snipe';
+import { LATENCY_FACTOR, latency, MIN_MARGIN, runAt, SNIPE_LEFT, type Fired } from './snipe';
 
 // Timed bids (« Miser à 10 s de la fin »), kept by the app rather than by a screen: once armed, a
 // bid goes out even if the player closes the lot or goes elsewhere in the game (the tab must stay
@@ -140,8 +140,8 @@ export async function armTimedBid(lot: { id: string; title: string }, amount: nu
   const cal = await calibrate(lot.id);
   if (!cal) throw new Error('Horloge du serveur indisponible : la mise à 10 s ne peut pas être visée. Enchérissez directement.');
   const offset = cal.offset;
-  // Margin: the slower of the recent API calls and the calibration round trips.
-  const margin = Math.max(latency(), cal.rtt) * LATENCY_FACTOR;
+  // Margin: the slower of the recent API calls and the calibration round trips (with a floor).
+  const margin = Math.max(MIN_MARGIN, Math.max(latency(), cal.rtt) * LATENCY_FACTOR);
   const lotEnd = cal.endAt;
   const sendAt = computeSend(lotEnd, offset, margin);
   if (sendAt - Date.now() < 500) throw new Error('Trop tard pour une mise à 10 s : enchérissez directement.');
