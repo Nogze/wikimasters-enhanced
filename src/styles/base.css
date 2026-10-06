@@ -1,0 +1,14 @@
+/* The whole game is one WebGL canvas: the page itself is just a black frame. */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #02030a;
+}
+canvas {
+  display: block;
+  touch-action: none;
+}
