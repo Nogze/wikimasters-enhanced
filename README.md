@@ -9,7 +9,7 @@ Works in Chrome, Edge, Brave and other Chromium browsers.
 ## Install
 
 1. Get the extension folder, either:
-   - from a zip someone sent you: unzip it into a folder you'll keep (the browser loads the extension from there), or
+   - from [Releases](https://github.com/Nogze/wikimasters-enhanced/releases/latest): download the zip and unzip it into a folder you'll keep (the browser loads the extension from there), or
    - by building it (needs [Node.js](https://nodejs.org) 20.19 or later):
      ```
      git clone https://github.com/Nogze/wikimasters-enhanced.git
