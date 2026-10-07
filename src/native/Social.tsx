@@ -3,6 +3,7 @@ import { ApiError, apiGet, apiSend } from '../lib/api';
 import { useSession } from '../lib/auth';
 import { linkClick, navigate, setQuery, useQuery } from '../lib/router';
 import { useNow } from '../lib/time';
+import { useKept } from '../lib/kept';
 import { Avatar, ago, href, Loading, PlayerLink } from './common';
 import { SearchField, useArmed } from './kit';
 
@@ -34,7 +35,7 @@ function RemoveFriend({ f, busy, onRemove }: { f: Friend; busy: boolean; onRemov
 export function FriendsScreen() {
   const me = useSession()?.user.id ?? '';
   const now = useNow(60_000);
-  const [data, setData] = useState<Friends | null>(null);
+  const [data, setData] = useKept<Friends | null>('friends', null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState('');
@@ -193,7 +194,7 @@ type Message = { id: string; from: string; to: string; body: string; read: boole
 export function MessagesScreen() {
   const me = useSession()?.user.id ?? '';
   const peerId = useQuery().get('with');
-  const [conversations, setConversations] = useState<Conversation[] | null>(null);
+  const [conversations, setConversations] = useKept<Conversation[] | null>('dms', null);
   const [friends, setFriends] = useState<Peer[]>([]);
   const loadList = useCallback(async () => setConversations(await apiGet<Conversation[]>('/dms', { force: true })), []);
   useEffect(() => {
@@ -264,7 +265,7 @@ export function MessagesScreen() {
 }
 
 function Thread({ me, peer, onRead }: { me: string; peer: Peer; onRead: () => void }) {
-  const [messages, setMessages] = useState<Message[] | null>(null);
+  const [messages, setMessages] = useKept<Message[] | null>(`dm:${peer.id}`, null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

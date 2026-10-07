@@ -7,6 +7,7 @@ import { RARITY_ORDER, RARITY_STYLE } from '../lib/rarity';
 import { navigate } from '../lib/router';
 import { mmss, useNow, usePacks } from '../lib/time';
 import type { Card, Rarity } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { openOriginal } from '../ext/bridge';
 import { verifyHuman } from '../ext/humanCheck';
 import { PullScene, type Phase, type PhaseState, type Pull, type PullStageHandle } from '../three/PullScene';
@@ -32,7 +33,7 @@ export function BoosterScreen({ stage }: { stage: StageFx }) {
   const [humanCheck, setHumanCheck] = useState(false);
   const [callout, setCallout] = useState<Callout | null>(null);
   const [info, setInfo] = useState(false);
-  const [history, setHistory] = useState<History | null>(null);
+  const [history, setHistory] = useKept<History | null>('packs:history', null);
   const flash = useRef<HTMLDivElement>(null);
   const now = useNow();
   const canOpen = !!packs;
@@ -281,8 +282,8 @@ type SpecialPack = { id: string; name?: string; title?: string; description?: st
  * special packs (extension only). Their cards go straight to the collection.
  */
 function ExtraPacks() {
-  const [pro, setPro] = useState<{ eligible: boolean; claimed_today: boolean; size?: number } | null>(null);
-  const [special, setSpecial] = useState<{ packs: SpecialPack[]; available: boolean } | null>(null);
+  const [pro, setPro] = useKept<{ eligible: boolean; claimed_today: boolean; size?: number } | null>('packs:pro', null);
+  const [special, setSpecial] = useKept<{ packs: SpecialPack[]; available: boolean } | null>('packs:special', null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {

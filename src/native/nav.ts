@@ -9,7 +9,7 @@ export type Group = { id: string; label: string; icon: string; items: { id: Scre
 export const GROUPS: Group[] = [
   {
     id: 'play',
-    label: 'JOUER',
+    label: 'Jouer',
     icon: ICON.booster,
     items: [
       { id: 'booster', path: '/', label: 'Paquets' },
@@ -18,7 +18,7 @@ export const GROUPS: Group[] = [
   },
   {
     id: 'collection',
-    label: 'COLLECTION',
+    label: 'Collection',
     icon: ICON.collection,
     items: [
       { id: 'collection', path: '/collection', label: 'Mes cartes' },
@@ -26,11 +26,11 @@ export const GROUPS: Group[] = [
       { id: 'profile', path: '/profile', label: 'Mon profil' },
     ],
   },
-  { id: 'market', label: 'MARCHÉ', icon: ICON.market, items: [{ id: 'market', path: '/market', label: 'Marché' }] },
-  { id: 'trades', label: 'ÉCHANGES', icon: ICON.trades, items: [{ id: 'trades', path: '/trades', label: 'Échanges' }] },
+  { id: 'market', label: 'Marché', icon: ICON.market, items: [{ id: 'market', path: '/market', label: 'Marché' }] },
+  { id: 'trades', label: 'Échanges', icon: ICON.trades, items: [{ id: 'trades', path: '/trades', label: 'Échanges' }] },
   {
     id: 'social',
-    label: 'SOCIAL',
+    label: 'Social',
     icon: ICON.people,
     items: [
       { id: 'friends', path: '/friends', label: 'Amis' },
@@ -40,7 +40,7 @@ export const GROUPS: Group[] = [
   },
   {
     id: 'progress',
-    label: 'PROGRÈS',
+    label: 'Progrès',
     icon: ICON.trophy,
     items: [
       { id: 'home', path: '/home', label: 'Aujourd’hui' },

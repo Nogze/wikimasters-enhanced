@@ -122,17 +122,11 @@ type Props = {
   card: Card | null;
   shiny?: boolean;
   fx?: CardFx;
-  /** Half-resolution face (walls of cards). */
-  lowRes?: boolean;
-  /** Texture scale (overrides lowRes): 0.25 for dense walls. */
-  res?: number;
-  /** Face and glow only: no edge, back or foil (hundreds of cards on screen). */
-  lite?: boolean;
   /** Called once the front texture is ready (so a reveal can wait for it). */
   onReady?: () => void;
 } & Omit<ThreeElements['group'], 'ref'>;
 
-export const CardMesh = forwardRef<THREE.Group, Props>(function CardMesh({ card, shiny = false, fx, onReady, lowRes, res, lite, ...group }, ref) {
+export const CardMesh = forwardRef<THREE.Group, Props>(function CardMesh({ card, shiny = false, fx, onReady, ...group }, ref) {
   const [front, setFront] = useState<THREE.CanvasTexture | null>(null);
   const [mask, setMask] = useState<THREE.CanvasTexture | null>(null);
   const [back, setBack] = useState<THREE.CanvasTexture | null>(null);
@@ -140,9 +134,9 @@ export const CardMesh = forwardRef<THREE.Group, Props>(function CardMesh({ card,
 
   useEffect(() => {
     let off = false;
-    if (!lite) backTex().then((t) => !off && setBack(t));
+    backTex().then((t) => !off && setBack(t));
     if (card)
-      drawCardFront(card, { shiny, scale: res ?? (lowRes ? 0.5 : 1) }).then((c) => {
+      drawCardFront(card, { shiny }).then((c) => {
         if (off) return;
         setFront(toTexture(c.face));
         const m = new THREE.CanvasTexture(c.mask);
@@ -188,32 +182,26 @@ export const CardMesh = forwardRef<THREE.Group, Props>(function CardMesh({ card,
       <mesh geometry={glowGeo} position={[0, 0, -0.05]} renderOrder={-1} raycast={NO_HIT}>
         <Shader vertexShader={plainVertex} fragmentShader={glowFragment} uniforms={glowUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
-      {!lite && (
-        <>
-          {/* Same halo behind the card when it lies face down (planes are one-sided). */}
-          <mesh geometry={glowGeo} position={[0, 0, 0.05]} rotation={[0, Math.PI, 0]} renderOrder={-1} raycast={NO_HIT}>
-            <Shader vertexShader={plainVertex} fragmentShader={glowFragment} uniforms={glowUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
-          </mesh>
-          <mesh geometry={bodyGeo}>
-            <meshBasicMaterial color={edgeColor} />
-          </mesh>
-        </>
-      )}
+      {/* Same halo behind the card when it lies face down (planes are one-sided). */}
+      <mesh geometry={glowGeo} position={[0, 0, 0.05]} rotation={[0, Math.PI, 0]} renderOrder={-1} raycast={NO_HIT}>
+        <Shader vertexShader={plainVertex} fragmentShader={glowFragment} uniforms={glowUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh geometry={bodyGeo}>
+        <meshBasicMaterial color={edgeColor} />
+      </mesh>
       {/* Front (faces +z) */}
       <mesh geometry={faceGeo} position={[0, 0, DEPTH / 2 + 0.0008]}>
         <meshBasicMaterial key={front ? 'tex' : 'blank'} map={front} color={front ? '#ffffff' : '#e9edf2'} />
       </mesh>
-      {mask && !lite && (
+      {mask && (
         <mesh geometry={faceGeo} position={[0, 0, DEPTH / 2 + 0.0016]}>
           <Shader vertexShader={foilVertex} fragmentShader={foilFragment} uniforms={foilUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
       {/* Back (faces −z) */}
-      {!lite && (
-        <mesh geometry={faceGeo} position={[0, 0, -DEPTH / 2 - 0.0008]} rotation={[0, Math.PI, 0]}>
-          <meshBasicMaterial key={back ? 'tex' : 'blank'} map={back} color={back ? '#ffffff' : '#0b1430'} />
-        </mesh>
-      )}
+      <mesh geometry={faceGeo} position={[0, 0, -DEPTH / 2 - 0.0008]} rotation={[0, Math.PI, 0]}>
+        <meshBasicMaterial key={back ? 'tex' : 'blank'} map={back} color={back ? '#ffffff' : '#0b1430'} />
+      </mesh>
     </group>
   );
 });

@@ -5,10 +5,8 @@ import * as THREE from 'three';
 import { startAccount } from '../lib/account';
 import { useSession } from '../lib/auth';
 import { navigate, usePath } from '../lib/router';
-import { CardCloud } from '../three/CardCloud';
 import { IDLE_TINT, makeStageFx, StageBackdrop, StageEffects, type StageFx } from '../three/Summon';
 import { BoosterScreen } from './Booster';
-import { CardLayer } from './CardLayer';
 import { CollectionScreen } from './Collection';
 import { MarketScreen } from './Market';
 import { Dock, SubNav, TitleScreen, TopBar, useBadges } from './Shell';
@@ -23,33 +21,19 @@ import { TradesScreen } from './Trades';
 import { World } from './tunnel';
 import { WmSignedOut } from './Wm';
 
-// The native client, three layers deep:
-//  - the world canvas (z 0): the summoning stage, the title's card cloud and the pack opening;
-//    shown on the title and booster screens only, paused elsewhere;
-//  - the interface (z 1): plain HTML, every screen, bar and button;
-//  - the card layer (z 2): the 3D cards of the interface, each pinned to its HTML slot.
-// Dialogs and toasts sit above all three (kit.tsx).
+// The client: plain HTML screens (cards are flat pictures, CardFace.tsx), and under them the 3D
+// world of the pack opening (the summoning stage), rendered on the pack screen only.
+// Dialogs and toasts sit above everything (kit.tsx).
 
 const BOOT_KEY = 'wme-booted';
 
-const CAMERA: Record<'title' | 'booster', { pos: [number, number, number]; look: [number, number, number] }> = {
-  title: { pos: [0, 2.6, 8.4], look: [0, 0.4, -2] },
-  booster: { pos: [0, 0.55, 6.6], look: [0, 0.05, 0] },
-};
+const CAMERA = { pos: [0, 0.55, 6.6], look: [0, 0.05, 0] } as const;
 
-/** Camera per screen (eased flights between them), plus shake / push-in / lift from the stage fx. */
-function Director({ view, fx }: { view: 'title' | 'booster'; fx: StageFx }) {
+/** The camera, plus shake / push-in / lift from the stage fx. */
+function Director({ fx }: { fx: StageFx }) {
   const { camera } = useThree();
-  const rig = useMemo(() => ({ pos: new THREE.Vector3(0, 7, 12), look: new THREE.Vector3(0, 0, 0) }), []);
+  const rig = useMemo(() => ({ pos: new THREE.Vector3(...CAMERA.pos), look: new THREE.Vector3(...CAMERA.look) }), []);
   const look = useMemo(() => new THREE.Vector3(), []);
-  useEffect(() => {
-    const c = CAMERA[view];
-    const tl = gsap.timeline();
-    tl.to(rig.pos, { x: c.pos[0], y: c.pos[1], z: c.pos[2], duration: 1.4, ease: 'power3.inOut' }, 0).to(rig.look, { x: c.look[0], y: c.look[1], z: c.look[2], duration: 1.4, ease: 'power3.inOut' }, 0);
-    return () => {
-      tl.kill();
-    };
-  }, [view, rig]);
   useFrame(({ clock }) => {
     const s = fx.shake * 0.06;
     const t = clock.elapsedTime * 60;
@@ -61,18 +45,17 @@ function Director({ view, fx }: { view: 'title' | 'booster'; fx: StageFx }) {
   return null;
 }
 
-function WorldScene({ view, fx }: { view: 'title' | 'booster'; fx: StageFx }) {
-  // Back to the idle stage between openings (the booster scene drives it while it's up).
+function WorldScene({ fx }: { fx: StageFx }) {
+  // The idle stage (the booster scene drives it during an opening).
   useEffect(() => {
     const tint = new THREE.Color(IDLE_TINT);
-    gsap.to(fx, { pillar: 0, rays: view === 'title' ? 0.2 : 0.12, power: 0.3, spin: 0.12, rainbow: 0, orb: 0, duration: 0.8 });
+    gsap.to(fx, { pillar: 0, rays: 0.12, power: 0.3, spin: 0.12, rainbow: 0, orb: 0, duration: 0.8 });
     gsap.to(fx.tint, { r: tint.r, g: tint.g, b: tint.b, duration: 0.8 });
-  }, [view, fx]);
+  }, [fx]);
   return (
     <>
       <StageBackdrop fx={fx} />
-      {view === 'title' && <CardCloud />}
-      <Director view={view} fx={fx} />
+      <Director fx={fx} />
       <World.Out />
       <StageEffects fx={fx} />
     </>
@@ -104,7 +87,10 @@ export function NativeApp() {
   }, []);
 
   const screen: ScreenId | 'title' = !session || !booted ? 'title' : (target ?? 'booster');
-  const inWorld = screen === 'title' || screen === 'booster';
+  const inWorld = screen === 'booster';
+  // Created on the first visit to the pack screen, then only paused elsewhere.
+  const [worldMade, setWorldMade] = useState(inWorld);
+  useEffect(() => void (inWorld && setWorldMade(true)), [inWorld]);
   const badges = useBadges(session && booted ? session.user.id : null);
   const boot = () => {
     try {
@@ -146,15 +132,16 @@ export function NativeApp() {
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#02030a', visibility: inWorld ? 'visible' : 'hidden', touchAction: 'none' }}>
-        <Canvas frameloop={inWorld ? 'always' : 'never'} dpr={[1, 2]} camera={{ position: [0, 7, 12], fov: 34, near: 0.1, far: 80 }} gl={{ antialias: false, powerPreference: 'high-performance' }}>
-          <Suspense fallback={null}>
-            <WorldScene view={screen === 'booster' ? 'booster' : 'title'} fx={stage} />
-          </Suspense>
-        </Canvas>
-      </div>
-      <div className={`wme${inWorld ? '' : ' ground'}`}>{body}</div>
-      <CardLayer />
+      {(inWorld || worldMade) && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#0a0a0a', visibility: inWorld ? 'visible' : 'hidden', touchAction: 'none' }}>
+          <Canvas frameloop={inWorld ? 'always' : 'never'} dpr={[1, 2]} camera={{ position: [...CAMERA.pos], fov: 34, near: 0.1, far: 80 }} gl={{ antialias: false, powerPreference: 'high-performance' }}>
+            <Suspense fallback={null}>
+              <WorldScene fx={stage} />
+            </Suspense>
+          </Canvas>
+        </div>
+      )}
+      <div className={`wme${inWorld ? '' : screen === 'title' ? ' ground night' : ' ground'}`}>{body}</div>
     </>
   );
 }

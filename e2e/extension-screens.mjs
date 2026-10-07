@@ -267,6 +267,7 @@ await go('/collection');
 await page.waitForSelector('.slot', { timeout: 30_000 });
 await page.waitForTimeout(2000);
 await page.click('.slot >> nth=1');
+check(await seen('.panel .bigcard .cardface.ready', 15_000), 'card panel shows the card picture');
 await page.fill('.tagedit input', 'à échanger');
 await page.press('.tagedit input', 'Enter');
 check(await seen('.tagchip.on:has-text("à échanger")'), 'tag created and set');
@@ -327,6 +328,14 @@ check(landed != null && landed > 10 && landed < 14, `timed bid reached wiki-mast
 
 await go('/settings');
 check(await seen('.setrow'), 'settings');
+
+// Pages already visited come back at once with their last content (refreshed in the background),
+// never « Chargement… » again.
+for (const [path, sel] of [['/friends', '.card-box .row'], ['/achievements', '.ach'], ['/collection', '.slot'], ['/home', '.tile'], ['/guild', '.trow2']]) {
+  await go(path);
+  const state = await page.evaluate((s) => ({ content: !!document.querySelector(s), loading: !!document.querySelector('.loading') || /Chargement/.test(document.querySelector('.screen')?.textContent ?? '') }), sel);
+  check(state.content && !state.loading, `back on ${path}: content shown at once, no loading`, JSON.stringify(state));
+}
 
 check(!foreign.size, `only wiki-masters and Wikimedia contacted${foreign.size ? `: ${[...foreign].join(', ')}` : ''}`);
 

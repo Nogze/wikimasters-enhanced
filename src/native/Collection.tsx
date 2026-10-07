@@ -7,10 +7,11 @@ import { DURATIONS, sell } from '../lib/market';
 import { fmt, RARITY_ORDER, RARITY_STYLE, views } from '../lib/rarity';
 import { navigate, useQuery } from '../lib/router';
 import type { Rarity, Tag } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { CardGrid, saveSize, savedSize, SIZES, type CardSize } from './CardGrid';
 import { BigCard, Icon, ICON, Panel, PanelPlaceholder, SearchField, useArmed, useToast } from './kit';
 
-// The collection: a paged board of 3D cards (filters, tags, search, sorts), a card's panel (details, tags, sell, showcase, trade, lock, discard), and a selection
+// The collection: a paged board of cards (filters, tags, search, sorts), a card's panel (details, tags, sell, showcase, trade, lock, discard), and a selection
 // mode for bulk actions (lock, tag, discard).
 
 type Sort = 'rarity' | 'recent' | 'atk' | 'def' | 'views' | 'name';
@@ -98,7 +99,7 @@ function TagEditor({ item, tags, onTag, onCreate }: { item: Item; tags: Tag[]; o
 // ---------------------------------------------------------------- one card
 
 function CardPanel({ item, tags, onClose, onChanged, onTag, onCreateTag, toast }: { item: Item; tags: Tag[]; onClose: () => void; onChanged: (patch: Partial<Item> | null) => void; onTag: (t: Tag, on: boolean) => void; onCreateTag: (name: string) => void; toast: (s: string) => void }) {
-  const [summary, setSummary] = useState<string | null | undefined>(undefined);
+  const [summary, setSummary] = useKept<string | null | undefined>(`summary:${item.card.id}`, undefined);
   const [discardArmed, armDiscard] = useArmed();
   const [sellArmed, armSell] = useArmed();
   const [busy, setBusy] = useState(false);
@@ -110,7 +111,6 @@ function CardPanel({ item, tags, onClose, onChanged, onTag, onCreateTag, toast }
   const [slots, setSlots] = useState<{ selling: number; maxConcurrentAuctions: number } | null>(null);
   const s = RARITY_STYLE[item.rarity];
   useEffect(() => {
-    setSummary(undefined);
     armDiscard(false);
     armSell(false);
     setSelling(false);
@@ -180,7 +180,7 @@ function CardPanel({ item, tags, onClose, onChanged, onTag, onCreateTag, toast }
   return (
     <Panel onClose={onClose} label={item.card.title}>
       <div className="ptop">
-        <BigCard k={item.id} card={{ ...item.card, rarity: item.rarity }} shiny={item.is_shiny} />
+        <BigCard card={{ ...item.card, rarity: item.rarity }} shiny={item.is_shiny} />
         <div className="ptxt">
           <span className="rarity-tag" style={{ color: s.color }}>
             {`${s.label}${item.is_shiny ? ' · brillante' : ''}`}
@@ -200,21 +200,21 @@ function CardPanel({ item, tags, onClose, onChanged, onTag, onCreateTag, toast }
       <div className="kv">
         <div>
           <b>{item.card.atk}</b>
-          <span>ATTAQUE</span>
+          <span>Attaque</span>
         </div>
         <div>
           <b>{item.card.def}</b>
-          <span>DÉFENSE</span>
+          <span>Défense</span>
         </div>
         {item.card.q_score != null && (
           <div>
             <b>{item.card.q_score}</b>
-            <span>Q-SCORE</span>
+            <span>Q-score</span>
           </div>
         )}
         <div>
           <b>{`×${item.count}`}</b>
-          <span>{item.count > 1 ? 'EXEMPLAIRES' : 'EXEMPLAIRE'}</span>
+          <span>{item.count > 1 ? 'Exemplaires' : 'Exemplaire'}</span>
         </div>
       </div>
       <p className="muted" style={{ fontSize: 14 }}>{`${views(item.card.pageviews)} lectures par mois · obtenue le ${new Date(item.obtained_at).toLocaleDateString('fr')}`}</p>
@@ -362,7 +362,7 @@ function SelectionPanel({ all, shown, selected, setSelected, tags, onLock, onTag
 export function CollectionScreen() {
   const { profile } = useAccount();
   const qp = useQuery();
-  const [all, setAll] = useState<Item[] | null>(null);
+  const [all, setAll] = useKept<Item[] | null>('collection', null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(() => ({ rarities: new Set(), shiny: false, star: false, locked: false, tag: '', sort: (qp.get('sort') as Sort) in SORTS ? (qp.get('sort') as Sort) : 'rarity' }));
@@ -517,21 +517,21 @@ export function CollectionScreen() {
               </button>
             ))}
             <button className={`chip${filters.shiny ? ' on' : ''}`} aria-pressed={filters.shiny} onClick={() => setFilters({ ...filters, shiny: !filters.shiny })}>
-              BRILLANTES
+              Brillantes
             </button>
             <button className={`chip${filters.star ? ' on' : ''}`} aria-pressed={filters.star} onClick={() => setFilters({ ...filters, star: !filters.star })}>
-              FAVORITES
+              Favorites
             </button>
             {lockedCount > 0 && (
               <button className={`chip${filters.locked ? ' on' : ''}`} aria-pressed={filters.locked} onClick={() => setFilters({ ...filters, locked: !filters.locked })}>
-                VERROUILLÉES
+                Verrouillées
                 <span className="n">{fmt(lockedCount)}</span>
               </button>
             )}
             {tags.length > 0 && (
               <select className="chip select" aria-label="Étiquette" value={filters.tag} onChange={(e) => setFilters({ ...filters, tag: e.target.value })}>
-                <option value="">TOUTES ÉTIQUETTES</option>
-                <option value={UNTAGGED}>SANS ÉTIQUETTE</option>
+                <option value="">Toutes étiquettes</option>
+                <option value={UNTAGGED}>Sans étiquette</option>
                 {tags.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -542,7 +542,7 @@ export function CollectionScreen() {
             <select className="chip select" aria-label="Tri" value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value as Sort })}>
               {(Object.keys(SORTS) as Sort[]).map((s) => (
                 <option key={s} value={s}>
-                  {`TRI : ${SORTS[s].toUpperCase()}`}
+                  {`Tri : ${SORTS[s].toLowerCase()}`}
                 </option>
               ))}
             </select>

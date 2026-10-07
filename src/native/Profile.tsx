@@ -7,6 +7,7 @@ import { fmt, RARITY_ORDER, RARITY_STYLE } from '../lib/rarity';
 import { linkClick, navigate, setQuery, useQuery } from '../lib/router';
 import { partnerCards, type PartnerCard } from '../lib/trades';
 import type { Card, Rarity } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { CardGrid, savedSize, type CardSize } from './CardGrid';
 import { norm, SizeButtons } from './Collection';
 import { ago, Avatar, CardInfoPanel, CardStrip, href, Loading } from './common';
@@ -63,9 +64,9 @@ type Picking = { kind: 'slot'; slot: number } | { kind: 'avatar' } | null;
 
 export function ProfileScreen() {
   const { profile } = useAccount();
-  const [items, setItems] = useState<Item[] | null>(null);
-  const [slots, setSlots] = useState<(string | null)[] | null>(null);
-  const [stats, setStats] = useState<Stats | undefined>(undefined);
+  const [items, setItems] = useKept<Item[] | null>('profile:items', null);
+  const [slots, setSlots] = useKept<(string | null)[] | null>('profile:slots', null);
+  const [stats, setStats] = useKept<Stats | undefined>('profile:stats', undefined);
   const [bio, setBio] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState<Picking>(null);
@@ -277,7 +278,7 @@ function ShowcaseCard({ item }: { item: Item }) {
     </div>
   );
 }
-const BigCardFor = ({ item }: { item: Item }) => <BigCard k={item.id} card={{ ...item.card, rarity: item.rarity }} shiny={item.is_shiny} />;
+const BigCardFor = ({ item }: { item: Item }) => <BigCard card={{ ...item.card, rarity: item.rarity }} shiny={item.is_shiny} />;
 
 // ---------------------------------------------------------------- someone else's
 
@@ -286,7 +287,7 @@ type Entry = PartnerCard & { key: string; shiny: boolean };
 export function PlayerScreen({ username }: { username: string }) {
   const qp = useQuery();
   const tab = qp.get('tab') === 'collection' ? 'collection' : 'vitrine';
-  const [info, setInfo] = useState<Player | null>(null);
+  const [info, setInfo] = useKept<Player | null>(`player:${username}`, null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<{ key: string; card: Card; shiny: boolean } | null>(null);
@@ -303,7 +304,6 @@ export function PlayerScreen({ username }: { username: string }) {
     [username],
   );
   useEffect(() => {
-    setInfo(null);
     setError(null);
     setOpen(null);
     void load();
@@ -433,7 +433,7 @@ export function PlayerScreen({ username }: { username: string }) {
 function PlayerCollection({ player, selected, onOpen, owned }: { player: Player; selected: string | null; onOpen: (e: Entry) => void; owned: Map<string, number> | null }) {
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [items, setItems] = useState<Entry[] | null>(null);
+  const [items, setItems] = useKept<Entry[] | null>(`player:${player.id}:cards:${debounced}`, null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -445,7 +445,6 @@ function PlayerCollection({ player, selected, onOpen, owned }: { player: Player;
   const map = (r: PartnerCard): Entry => ({ ...r, key: r.id, shiny: r.is_shiny });
   useEffect(() => {
     let off = false;
-    setItems(null);
     partnerCards(player, debounced, 0).then(
       (r) => !off && (setItems(r.items.map(map)), setHasMore(r.hasMore), setPage(0)),
       () => !off && setItems([]),
@@ -513,7 +512,7 @@ export function CatalogScreen() {
   const [rarities, setRarities] = useState<Set<Rarity>>(new Set());
   const [q, setQ] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [items, setItems] = useState<CatalogEntry[] | null>(null);
+  const [items, setItems] = useKept<CatalogEntry[] | null>(`catalog:${lang}|${[...rarities].sort().join()}|${debounced}`, null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -552,7 +551,6 @@ export function CatalogScreen() {
   );
   useEffect(() => {
     let off = false;
-    setItems(null);
     setError(null);
     query(0).then(
       (r) => !off && (setItems(r.items), setHasMore(r.hasMore), setPage(0)),
@@ -576,7 +574,7 @@ export function CatalogScreen() {
   }, [query, page, hasMore, busy]);
   const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : null;
   // « Ma liste »: the cards I'm looking for (and the filter that shows only them).
-  const [wished, setWished] = useState<CatalogEntry[] | null>(null);
+  const [wished, setWished] = useKept<CatalogEntry[] | null>('wishlist', null);
   const [onlyWished, setOnlyWished] = useState(false);
   useEffect(() => {
     apiGet<{ items: Card[] }>('/wishlist', { force: true }).then(
@@ -691,9 +689,8 @@ export function CatalogScreen() {
 
 /** Friends who own a card: ask them for a trade. */
 function FriendOwners({ cardId }: { cardId: string }) {
-  const [people, setPeople] = useState<{ id: string; username: string }[] | null>(null);
+  const [people, setPeople] = useKept<{ id: string; username: string }[] | null>(`card:${cardId}:friends`, null);
   useEffect(() => {
-    setPeople(null);
     apiGet<{ id: string; username: string }[]>(`/cards/${cardId}/friends`, { ttl: 60_000 }).then(setPeople, () => setPeople([]));
   }, [cardId]);
   if (!people?.length) return null;
@@ -756,7 +753,7 @@ function ReportButton({ userId, username }: { userId: string; username: string }
           <div className="chips" style={{ marginTop: 0 }}>
             {(Object.keys(REASONS) as (keyof typeof REASONS)[]).map((r) => (
               <button key={r} className={`chip${reason === r ? ' on' : ''}`} aria-pressed={reason === r} onClick={() => setReason(r)}>
-                {REASONS[r].toUpperCase()}
+                {REASONS[r]}
               </button>
             ))}
           </div>

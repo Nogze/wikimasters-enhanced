@@ -41,8 +41,8 @@ export const STATUS: Record<TradeStatus, { label: string; color: string }> = {
   pending: { label: 'EN ATTENTE', color: '#ffd23f' },
   accepted: { label: 'ACCEPTÉ', color: '#5ee0a0' },
   declined: { label: 'REFUSÉ', color: '#ff8a9a' },
-  cancelled: { label: 'ANNULÉ', color: '#9aa6c8' },
-  expired: { label: 'EXPIRÉ', color: '#9aa6c8' },
+  cancelled: { label: 'ANNULÉ', color: '#a3a3a3' },
+  expired: { label: 'EXPIRÉ', color: '#a3a3a3' },
   countered: { label: 'CONTRE-OFFRE', color: '#8fe3ff' },
 };
 

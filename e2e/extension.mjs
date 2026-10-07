@@ -3,7 +3,7 @@
 // session cookie, and Cloudflare Turnstile is replaced by a stand-in that answers at once. Nothing
 // reaches the real wiki-masters account.
 //
-// Covers: takeover (canvas, no official page), and the anti-bot check done inside Wikimasters Enhanced
+// Covers: takeover (the client, no official page), and the anti-bot check done inside Wikimasters Enhanced
 // (first /packs/open refused → panel → token to /api/human-check → opening retried).
 // `npm run test:e2e` (builds dist/ first). Screenshots go to .shots/ (OUT=… to change).
 import { mkdirSync } from 'node:fs';
@@ -107,7 +107,7 @@ const shot = (name) => page.screenshot({ path: `${OUT}/ext-${name}.png` }).then(
 
 // 1. Takeover: the native client instead of the official page.
 await page.goto('https://www.wiki-masters.com/', { waitUntil: 'commit' });
-await page.waitForSelector('canvas', { timeout: 60_000 });
+await page.waitForSelector('.wme', { timeout: 60_000 });
 check((await page.locator('#official').count()) === 0, 'official page replaced by the Wikimasters Enhanced client');
 await page.waitForTimeout(6000);
 await shot('1-title');

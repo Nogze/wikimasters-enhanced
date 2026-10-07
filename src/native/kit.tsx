@@ -1,12 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Card } from '../lib/types';
 import { sfx } from '../lib/sfx';
-import { addAnchor, addOccluder, getPin, hoverAnchor, leaveAnchor, removeAnchor, type Anchor } from './pins';
+import { CardFace } from './CardFace';
 import gsap from 'gsap';
 
-// The interface kit: icons, dialogs and toasts (above the card layer), and the two kinds of card
-// anchors (a grid slot, the big card of a panel). Styles live in styles/app.css.
+// The interface kit: icons, dialogs and toasts, card slots and the big card of a panel, panels.
+// Styles live in styles/app.css.
 
 export const ICON = {
   booster: 'M6 3.5l1 1 1-1 1 1 1-1 1 1 1-1 1 1 1-1 1 1 1-1 1 1V20l-1 1-1-1-1 1-1-1-1 1-1-1-1 1-1-1-1 1-1-1-1 1-1-1zM12 7.9a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z',
@@ -120,134 +120,41 @@ function useNarrow() {
   return narrow;
 }
 
-// ---------------------------------------------------------------- card anchors
-
-type AnchorOpts = { k: string; card: Card; shiny: boolean; priority: number; clip?: HTMLElement | null };
-
-/** Registers an element as the place where card `k` sits. Returns a ref for that element. */
-function useAnchor({ k, card, shiny, priority, clip = null }: AnchorOpts) {
-  const [el, setEl] = useState<HTMLElement | null>(null);
-  const anchor = useRef<Anchor | null>(null);
-  useLayoutEffect(() => {
-    if (!el) return;
-    const a = addAnchor(k, { el, priority, clip, card, shiny });
-    anchor.current = a;
-    return () => {
-      anchor.current = null;
-      removeAnchor(k, a);
-    };
-  }, [el, k, priority, clip]); // eslint-disable-line react-hooks/exhaustive-deps
-  // The card itself may change (a flag patched in): update in place.
-  if (anchor.current) {
-    anchor.current.card = card;
-    anchor.current.shiny = shiny;
-  }
-  return setEl;
-}
-
-/** Pointer tilt handlers for an anchor element. */
-function tiltHandlers(k: string, amount: number) {
-  return {
-    onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
-      if (e.pointerType === 'touch') return;
-      const r = e.currentTarget.getBoundingClientRect();
-      hoverAnchor(k, e.currentTarget, ((e.clientX - r.left) / r.width - 0.5) * 2, ((e.clientY - r.top) / r.height - 0.5) * 2, amount);
-    },
-    onPointerLeave: (e: React.PointerEvent<HTMLElement>) => leaveAnchor(k, e.currentTarget),
-    onFocus: (e: React.FocusEvent<HTMLElement>) => hoverAnchor(k, e.currentTarget, 0, 0, 0.6),
-    onBlur: (e: React.FocusEvent<HTMLElement>) => leaveAnchor(k, e.currentTarget),
-  };
-}
+// ---------------------------------------------------------------- cards
 
 /** A card in a grid: a real button the size of the card. */
-export function CardSlot({ k, card, shiny, clip, className, label, onClick, disabled }: { k: string; card: Card; shiny: boolean; clip: HTMLElement | null; className?: string; label: string; onClick?: () => void; disabled?: boolean }) {
-  const ref = useAnchor({ k, card, shiny, priority: 1, clip });
+export function CardSlot({ card, shiny, className, label, onClick, disabled, faceDown }: { card: Card; shiny: boolean; className?: string; label: string; onClick?: () => void; disabled?: boolean; faceDown?: boolean }) {
   return (
-    <button
-      ref={ref}
-      type="button"
-      className={`slot${className ? ` ${className}` : ''}`}
-      data-key={k}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => (sfx.click(), onClick?.())}
-      {...tiltHandlers(k, 1)}
-    />
+    <button type="button" className={`slot${className ? ` ${className}` : ''}`} aria-label={label} disabled={disabled} onClick={() => (sfx.click(), onClick?.())}>
+      <CardFace card={card} shiny={shiny} faceDown={faceDown} />
+    </button>
   );
 }
 
-/** The panel a big card sits in: the card is clipped to it when the panel scrolls. */
-const PanelBox = createContext<HTMLElement | null>(null);
-
-/** The big card of a detail panel: tilts under the pointer, turns over when dragged. */
-export function BigCard({ k, card, shiny }: { k: string; card: Card; shiny: boolean }) {
-  const ref = useAnchor({ k, card, shiny, priority: 2, clip: useContext(PanelBox) });
-  const drag = useRef<{ x: number; spin: number; w: number } | null>(null);
-  const tilt = tiltHandlers(k, 0.5);
-  const end = useCallback(() => {
-    const p = getPin(k);
-    if (!drag.current || !p) return;
-    drag.current = null;
-    // Rest on the front or the back, whichever is nearer.
-    gsap.to(p, { spin: Math.round(p.spin / Math.PI) * Math.PI, duration: 0.5, ease: 'back.out(1.6)' });
-  }, [k]);
-  // A new card starts face up.
-  useEffect(() => {
-    const p = getPin(k);
-    if (p) p.spin = Math.round(p.spin / (2 * Math.PI)) * 2 * Math.PI;
-  }, [k]);
+/** The big card of a detail panel. */
+export function BigCard({ card, shiny }: { card: Card; shiny: boolean }) {
   return (
-    <div
-      ref={ref}
-      className="bigcard"
-      aria-hidden="true"
-      onPointerDown={(e) => {
-        const p = getPin(k);
-        if (!p || p.flight) return;
-        e.currentTarget.setPointerCapture(e.pointerId);
-        gsap.killTweensOf(p);
-        p.tiltT = [0, 0];
-        drag.current = { x: e.clientX, spin: p.spin, w: e.currentTarget.getBoundingClientRect().width };
-      }}
-      onPointerMove={(e) => {
-        const p = getPin(k);
-        if (drag.current && p) p.spin = drag.current.spin + ((e.clientX - drag.current.x) / drag.current.w) * Math.PI;
-        else tilt.onPointerMove(e);
-      }}
-      onPointerUp={end}
-      onPointerCancel={end}
-      onPointerLeave={(e) => !drag.current && tilt.onPointerLeave(e)}
-    />
+    <div className="bigcard" aria-hidden="true">
+      <CardFace card={card} shiny={shiny} big />
+    </div>
   );
 }
 
-/** Detail panel: beside the board, or a bottom sheet on phones (cutting the board's cards). */
+/** Detail panel: beside the board, or a bottom sheet on phones. */
 export function Panel({ children, onClose, label }: { children: ReactNode; onClose?: () => void; label: string }) {
   const ref = useRef<HTMLElement>(null);
-  const [box, setBox] = useState<HTMLElement | null>(null);
   const narrow = useNarrow();
-  useLayoutEffect(() => {
-    if (!narrow || !ref.current) return;
-    return addOccluder(ref.current);
-  }, [narrow]);
   useLayoutEffect(() => {
     if (ref.current) gsap.fromTo(ref.current, narrow ? { y: 40, opacity: 0 } : { x: 30, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' });
   }, [narrow]);
   return (
-    <aside
-      className="panel"
-      ref={(el) => {
-        ref.current = el;
-        setBox(el);
-      }}
-      aria-label={label}
-    >
+    <aside className="panel" ref={ref} aria-label={label}>
       {onClose && (
         <button className="iconbtn close" aria-label="Fermer" onClick={onClose}>
           <Icon d={ICON.close} size={14} />
         </button>
       )}
-      {box && <PanelBox.Provider value={box}>{children}</PanelBox.Provider>}
+      {children}
     </aside>
   );
 }

@@ -6,6 +6,7 @@ import { loadCollection, type Item } from '../lib/collection';
 import { fmt, RARITY_STYLE } from '../lib/rarity';
 import { setQuery, useQuery } from '../lib/router';
 import type { Card } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { CardGrid, savedSize, type CardSize } from './CardGrid';
 import { SizeButtons } from './Collection';
 import { CardInfoPanel, CardStrip, Loading, PlayerLink } from './common';
@@ -31,13 +32,13 @@ type Ranking = { entries: RankEntry[]; week_start: string; week_end: string; res
 type Member = Person & { role?: string; joined_at?: string };
 type ChatMessage = { id: string; body: string; system: boolean; created_at: string; user: { id: string; username: string } | null };
 
-const TABS = { home: 'ACCUEIL', members: 'MEMBRES', chat: 'CHAT', ranking: 'CLASSEMENT' } as const;
+const TABS = { home: 'Accueil', members: 'Membres', chat: 'Chat', ranking: 'Classement' } as const;
 type Tab = keyof typeof TABS;
 
 export function GuildScreen() {
   const me = useSession()?.user.id ?? '';
   const qp = useQuery();
-  const [info, setInfo] = useState<GuildInfo | null>(null);
+  const [info, setInfo] = useKept<GuildInfo | null>('guild', null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async (force = false) => {
     try {
@@ -161,7 +162,7 @@ function NoGuild({ invites, onJoined }: { invites: { guild_id: string; guild_nam
 // ---------------------------------------------------------------- home: wishlist
 
 function GuildHome({ me, guild }: { me: string; guild: Guild }) {
-  const [home, setHome] = useState<Home | null>(null);
+  const [home, setHome] = useKept<Home | null>('guild:home', null);
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [open, setOpen] = useState<Wish | null>(null);
@@ -412,7 +413,7 @@ function MemberActions({ m, onAct }: { m: Member; onAct: (path: string, body: un
 }
 
 function GuildMembers({ me, membership, onChanged }: { me: string; membership: Membership | null; onChanged: () => void }) {
-  const [members, setMembers] = useState<Member[] | null>(null);
+  const [members, setMembers] = useKept<Member[] | null>('guild:members', null);
   const [hasMore, setHasMore] = useState(false);
   const [friends, setFriends] = useState<{ id: string; username: string }[]>([]);
   const [invited, setInvited] = useState<Set<string>>(new Set());
@@ -505,7 +506,7 @@ function GuildMembers({ me, membership, onChanged }: { me: string; membership: M
 // ---------------------------------------------------------------- chat
 
 function GuildChat({ me, guild }: { me: string; guild: Guild }) {
-  const [messages, setMessages] = useState<ChatMessage[] | null>(null);
+  const [messages, setMessages] = useKept<ChatMessage[] | null>('guild:chat', null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -573,7 +574,7 @@ function GuildChat({ me, guild }: { me: string; guild: Guild }) {
 // ---------------------------------------------------------------- ranking
 
 function GuildRanking() {
-  const [data, setData] = useState<Ranking | null>(null);
+  const [data, setData] = useKept<Ranking | null>('guild:ranking', null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     apiGet<Ranking>('/guilds/leaderboard', { ttl: 5 * 60_000 })

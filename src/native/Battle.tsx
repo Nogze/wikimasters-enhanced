@@ -1,4 +1,3 @@
-import gsap from 'gsap';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, apiGet } from '../lib/api';
 import { useSession } from '../lib/auth';
@@ -11,14 +10,17 @@ import { navigate, useQuery } from '../lib/router';
 import { sfx } from '../lib/sfx';
 import { useNow } from '../lib/time';
 import type { Card } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { CardGrid, savedSize, type CardSize } from './CardGrid';
 import { norm, SizeButtons } from './Collection';
 import { ago, CardStrip, Loading, PlayerLink } from './common';
 import { BigCard, Modal, Panel, PanelPlaceholder, SearchField, useArmed, useToast } from './kit';
-import { getPin } from './pins';
 
 // Quiz battles against a friend: decks of 3 cards (HP = sum of DEF), attacks answered by a quiz on
 // the attacking card's article (damage = ATK × wrong answers / questions). wiki-masters' rules.
+
+/** No cards known yet (one shared empty map, so it is stable between renders). */
+const NO_CARDS = new Map<string, Card>();
 
 const resultOf = (b: Battle, me: string) => (b.status === 'completed' ? (b.winner_id === me ? 'Victoire' : 'Défaite') : (battles.STATUS[b.status] ?? b.status));
 
@@ -42,8 +44,8 @@ export function BattlesScreen() {
   const me = useSession()?.user.id ?? '';
   const qp = useQuery();
   const now = useNow(60_000);
-  const [data, setData] = useState<{ battles: Battle[]; challenge_quota: Quota } | null>(null);
-  const [friends, setFriends] = useState<{ id: string; username: string; online?: boolean }[] | null>(null);
+  const [data, setData] = useKept<{ battles: Battle[]; challenge_quota: Quota } | null>('battles', null);
+  const [friends, setFriends] = useKept<{ id: string; username: string; online?: boolean }[] | null>('friends:list', null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [help, setHelp] = useState(false);
@@ -87,7 +89,7 @@ export function BattlesScreen() {
         <span className="who2">{`vs ${other?.username ?? '?'}`}</span>
         <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <span className="when">{ago(b.updated_at ?? b.created_at, now)}</span>
-          <span className="status" style={{ background: r === 'Victoire' ? 'var(--good)' : r === 'Défaite' ? 'var(--bad)' : waitingOnMe ? 'var(--gold)' : '#9aa6c8' }}>
+          <span className="status" style={{ background: r === 'Victoire' ? 'var(--good)' : r === 'Défaite' ? 'var(--bad)' : waitingOnMe ? 'var(--accent)' : '#a3a3a3' }}>
             {waitingOnMe ? 'À VOUS' : r.toUpperCase()}
           </span>
         </span>
@@ -166,7 +168,7 @@ function Hp({ name, cur, max }: { name: string; cur: number; max: number }) {
         <span className="num">{`${fmt(cur)} / ${fmt(max)} PV`}</span>
       </div>
       <div className="hptrack">
-        <i style={{ width: `${pct}%`, background: pct > 50 ? 'var(--good)' : pct > 20 ? 'var(--gold)' : 'var(--bad)' }} />
+        <i style={{ width: `${pct}%`, background: pct > 50 ? 'var(--good)' : pct > 20 ? 'var(--accent)' : 'var(--bad)' }} />
       </div>
     </div>
   );
@@ -174,8 +176,8 @@ function Hp({ name, cur, max }: { name: string; cur: number; max: number }) {
 
 export function BattleArena({ id }: { id: string }) {
   const me = useSession()?.user.id ?? '';
-  const [d, setD] = useState<Detail | null>(null);
-  const [cards, setCards] = useState<Map<string, Card>>(new Map());
+  const [d, setD] = useKept<Detail | null>(`battle:${id}`, null);
+  const [cards, setCards] = useKept<Map<string, Card>>(`battle:${id}:cards`, NO_CARDS);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useToast(3500);
@@ -252,7 +254,7 @@ export function BattleArena({ id }: { id: string }) {
         <div className="headmain">
           <div className="titleline">
             <h1 className="h1">{`${meP?.username ?? 'Moi'} contre ${them?.username ?? '?'}`}</h1>
-            <span className="status" style={{ background: '#9aa6c8' }}>
+            <span className="status" style={{ background: '#a3a3a3' }}>
               {resultOf(b, me).toUpperCase()}
             </span>
           </div>
@@ -350,7 +352,7 @@ function WaitingDeck({ deck, cards, them }: { deck: string[]; cards: Map<string,
 type DeckItem = { key: string; card: Card; shiny: boolean };
 
 function DeckPicker({ busy, onSubmit }: { busy: boolean; onSubmit: (ids: string[]) => void }) {
-  const [options, setOptions] = useState<DeckItem[] | null>(null);
+  const [options, setOptions] = useKept<DeckItem[] | null>('battle:deck-options', null);
   const [picked, setPicked] = useState<string[]>([]);
   const [q, setQ] = useState('');
   const [size, setSize] = useState<CardSize>(savedSize);
@@ -438,13 +440,6 @@ function Board({ battle, gs, me, them, meName, cards, busy, act }: { battle: Bat
     (p?.cardIds ?? []).flatMap((cid) => (cards.get(cid) ? [{ key: `b-${who}-${cid}`, card: cards.get(cid)!, shiny: false, used: !!p?.usedCardIds?.includes(cid), cid }] : []));
   const myCards = strip(mine, me);
   const theirCards = strip(theirs, them.id);
-  // Cards that already attacked lie face down.
-  useEffect(() => {
-    for (const c of [...myCards, ...theirCards]) {
-      const pin = getPin(c.key);
-      if (pin && c.used && Math.abs(pin.spin - Math.PI) > 0.01) gsap.to(pin, { spin: Math.PI, duration: 0.6, ease: 'power2.out' });
-    }
-  });
   // Cards as big as the board's height allows (two rows, HP bars and the turn line).
   const arena = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(128);
@@ -465,6 +460,7 @@ function Board({ battle, gs, me, them, meName, cards, busy, act }: { battle: Bat
         <Hp name={them.username} cur={theirs?.currentHp ?? 0} max={theirs?.maxHp ?? 1} />
         <CardStrip
           items={theirCards}
+          faceDown={(c) => c.used}
           width={cw}
           selected={attackKey}
           label={(c) => `${c.card.title}${c.used ? ', a déjà attaqué' : ''}`}
@@ -490,6 +486,7 @@ function Board({ battle, gs, me, them, meName, cards, busy, act }: { battle: Bat
         </div>
         <CardStrip
           items={myCards}
+          faceDown={(c) => c.used}
           width={cw}
           selected={attackKey}
           label={(c) => `${c.card.title}${c.used ? ', a déjà attaqué' : myTurn ? ', attaquer' : ''}`}
@@ -541,7 +538,7 @@ function QuizPanel({ attack, attackKey, card, iDefend, them, busy, act }: { atta
   return (
     <Panel label="Quiz">
       <div className="ptop">
-        {card && <BigCard k={attackKey} card={card} shiny={false} />}
+        {card && <BigCard card={card} shiny={false} />}
         <div className="ptxt">
           <span className="lbl muted">{iDefend ? 'Défendez-vous' : `${them} se défend`}</span>
           <h2>{attack.attackCardName ?? card?.title}</h2>

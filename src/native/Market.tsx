@@ -10,6 +10,7 @@ import { useNow } from '../lib/time';
 import { armTimedBid as armTimed, cancelTimedBid, lotEndChanged, useTimedBids } from '../lib/timedBids';
 import { useOwnedCounts } from '../lib/collection';
 import type { Rarity } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { CardGrid, savedSize, type CardSize } from './CardGrid';
 import { SizeButtons } from './Collection';
 import { PanelPlaceholder, BigCard, Panel, SearchField, useArmed } from './kit';
@@ -20,13 +21,13 @@ import { PanelPlaceholder, BigCard, Panel, SearchField, useArmed } from './kit';
 
 type Tab = 'browse' | MineTab;
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'browse', label: 'PARCOURIR' },
-  { id: 'selling', label: 'MES VENTES' },
-  { id: 'bidding', label: 'MES ENCHÈRES' },
-  { id: 'won', label: 'GAGNÉES' },
-  { id: 'history', label: 'HISTORIQUE' },
+  { id: 'browse', label: 'Parcourir' },
+  { id: 'selling', label: 'Mes ventes' },
+  { id: 'bidding', label: 'Mes enchères' },
+  { id: 'won', label: 'Gagnées' },
+  { id: 'history', label: 'Historique' },
 ];
-const SORTS: Record<MarketSort, string> = { ending: 'FIN PROCHE', recent: 'RÉCENTES', price_asc: 'PRIX ↑', price_desc: 'PRIX ↓' };
+const SORTS: Record<MarketSort, string> = { ending: 'Fin proche', recent: 'Récentes', price_asc: 'PRIX ↑', price_desc: 'PRIX ↓' };
 const SORT_ORDER: MarketSort[] = ['recent', 'ending', 'price_asc', 'price_desc'];
 const priceOf = (l: Lot) => l.current_bid ?? l.base_amount;
 type GridLot = Lot & { key: string; shiny: boolean };
@@ -35,7 +36,7 @@ function LotPanel({ initial, onClose, onChanged }: { initial: Lot; onClose: () =
   const id = initial.id;
   const { balance } = useAccount();
   const now = useNow(500);
-  const [lot, setLot] = useState<LotDetail | null>(null);
+  const [lot, setLot] = useKept<LotDetail | null>(`lot:${id}`, null);
   const [amount, setAmount] = useState('');
   const [armed, arm] = useArmed();
   const [newBase, setNewBase] = useState('');
@@ -58,7 +59,6 @@ function LotPanel({ initial, onClose, onChanged }: { initial: Lot; onClose: () =
       .catch((e) => setError(e instanceof ApiError ? e.message : 'Erreur réseau'));
   }, [id]);
   useEffect(() => {
-    setLot(null);
     setAmount('');
     setError(null);
     setNote(null);
@@ -128,7 +128,7 @@ function LotPanel({ initial, onClose, onChanged }: { initial: Lot; onClose: () =
   return (
     <Panel onClose={onClose} label={l.card.title}>
       <div className="ptop">
-        <BigCard k={l.id} card={l.card} shiny={l.is_shiny} />
+        <BigCard card={l.card} shiny={l.is_shiny} />
         <div className="ptxt">
           <span className="rarity-tag" style={{ color: s.color }}>
             {`${s.label}${l.is_shiny ? ' · brillante' : ''}`}
@@ -141,7 +141,7 @@ function LotPanel({ initial, onClose, onChanged }: { initial: Lot; onClose: () =
       <div className="row2">
         <div className="box">
           <span className="lbl muted">{l.current_bid != null ? 'Enchère actuelle' : 'Mise de départ'}</span>
-          <span className="big" style={{ color: 'var(--gold)' }}>{`${fmt(priceOf(l))} WB`}</span>
+          <span className="big" style={{ color: 'var(--accent)' }}>{`${fmt(priceOf(l))} WB`}</span>
         </div>
         <div className="box">
           <span className="lbl muted">{ended ? 'Terminée' : 'Fin dans'}</span>
@@ -241,12 +241,12 @@ export function MarketScreen({ path }: { path: string }) {
   const [sort, setSort] = useState<MarketSort>('recent');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [lots, setLots] = useState<Lot[] | null>(null);
+  const [lots, setLots] = useKept<Lot[] | null>(`market:${tab}|${[...rarities].sort().join()}|${debounced}|${sort}`, null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<Summary | null>(null);
+  const [summary, setSummary] = useKept<Summary | null>('market:summary', null);
   const [openLot, setOpenLot] = useState<Lot | null>(null);
   const [tick, setTick] = useState(0);
   const [size, setSize] = useState<CardSize>(savedSize);
@@ -380,7 +380,7 @@ export function MarketScreen({ path }: { path: string }) {
               return (
                 <div className="capcol">
                   <div className="capline">
-                    <b style={{ color: l.leading ? 'var(--good)' : l.mine ? 'var(--blue)' : 'var(--gold)' }}>{`${fmt(priceOf(l))} WB`}</b>
+                    <b style={{ color: l.leading ? 'var(--good)' : l.mine ? 'var(--blue)' : 'var(--accent)' }}>{`${fmt(priceOf(l))} WB`}</b>
                     {ownedCounts?.get(l.card.id) ? <i className="own" title="Déjà dans votre collection">{`✓ possédée${ownedCounts.get(l.card.id)! > 1 ? ` ×${ownedCounts.get(l.card.id)}` : ''}`}</i> : null}
                   </div>
                   <span style={soon ? { color: 'var(--bad)' } : undefined}>

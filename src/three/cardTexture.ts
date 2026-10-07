@@ -5,8 +5,9 @@ import { ATK_PATH, DEF_PATH, hasArt, LAYOUT, subtitle, TIERS } from '../lib/card
 import { circle, globe, goldGradient, starPolygon, textRing } from './ornament';
 import type { Card } from '../lib/types';
 
-// Card faces drawn on a canvas for the 3D card, from the same spec as the DOM card
-// (lib/cardSpec.ts, styles/card.css): wiki-masters' layout with more shine. 5:7 like the 3D card.
+// Card faces drawn on a canvas, from lib/cardSpec.ts: wiki-masters' layout with more shine, 5:7.
+// Shown as flat pictures in the interface (native/CardFace.tsx) and on the 3D cards of the pack
+// opening (CardMesh.tsx).
 
 const TEX_W = 640;
 const TEX_H = 896;

@@ -6,6 +6,7 @@ import { loadCollection, type Item } from '../lib/collection';
 import { fmt, RARITY_STYLE } from '../lib/rarity';
 import { linkClick, navigate, setQuery, useQuery } from '../lib/router';
 import { mmss, useNow } from '../lib/time';
+import { useKept } from '../lib/kept';
 import { CardStrip, href, Loading, PlayerLink, Progress } from './common';
 import { Icon, ICON, useToast } from './kit';
 
@@ -18,10 +19,10 @@ export function HomeScreen() {
   const me = useSession()?.user.id ?? '';
   const { profile } = useAccount();
   const now = useNow();
-  const [selling, setSelling] = useState<{ selling: number; maxConcurrentAuctions: number; leading?: number } | null>(null);
-  const [tradesIn, setTradesIn] = useState<number | null>(null);
-  const [claimable, setClaimable] = useState<number | null>(null);
-  const [finds, setFinds] = useState<Item[] | null>(null);
+  const [selling, setSelling] = useKept<{ selling: number; maxConcurrentAuctions: number; leading?: number } | null>('home:selling', null);
+  const [tradesIn, setTradesIn] = useKept<number | null>('home:trades', null);
+  const [claimable, setClaimable] = useKept<number | null>('home:claimable', null);
+  const [finds, setFinds] = useKept<Item[] | null>('home:finds', null);
 
   useEffect(() => {
     apiGet<{ selling: number; maxConcurrentAuctions: number; leading: number }>('/market/summary', { ttl: 30_000 }).then(setSelling).catch(() => {});
@@ -107,7 +108,7 @@ type Achievement = { id: string; label: string; description: string; progress: n
 const ACH_ICON: Record<string, string> = { packs: ICON.pack, collector: ICON.collection, legend: ICON.star, shiny: ICON.star, merchant: ICON.coin, trader: ICON.trades, social: ICON.people };
 
 export function AchievementsScreen() {
-  const [list, setList] = useState<Achievement[] | null>(null);
+  const [list, setList] = useKept<Achievement[] | null>('achievements', null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useToast();
@@ -207,10 +208,9 @@ export function LeaderboardScreen() {
   const q = useQuery();
   const board: Board = (q.get('board') as Board) in BOARDS ? (q.get('board') as Board) : 'score';
   const page = Math.max(0, Number(q.get('page')) || 0);
-  const [data, setData] = useState<Ranking | null>(null);
+  const [data, setData] = useKept<Ranking | null>(`leaderboard:${board}:${page}`, null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    setData(null);
     setError(null);
     apiGet<Ranking>(`/leaderboard/${board}?page=${page}`, { ttl: 30_000 })
       .then(setData)
@@ -228,7 +228,7 @@ export function LeaderboardScreen() {
           <div className="chips">
             {(Object.keys(BOARDS) as Board[]).map((k) => (
               <button key={k} className={`chip${k === board ? ' on' : ''}`} aria-pressed={k === board} onClick={() => setQuery({ board: k === 'score' ? null : k, page: null })}>
-                {BOARDS[k].label.toUpperCase()}
+                {BOARDS[k].label}
               </button>
             ))}
           </div>

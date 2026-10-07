@@ -1,13 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { apiGet } from '../lib/api';
 import { subtitle } from '../lib/cardSpec';
 import { BASE, linkClick } from '../lib/router';
 import { fmt, RARITY_STYLE, views } from '../lib/rarity';
 import type { Card } from '../lib/types';
 import { imageSources } from '../lib/images';
+import { useKept } from '../lib/kept';
 import { BigCard, CardSlot, Panel } from './kit';
 
-// Pieces shared by the social and progression screens: avatars, links to players, a strip of 3D
+// Pieces shared by the social and progression screens: avatars, links to players, a strip of
 // cards (showcase, latest finds, wishlists), and the panel of a card you don't own.
 
 export function Avatar({ name, url, online, size = 36 }: { name?: string; url?: string | null; online?: boolean; size?: number }) {
@@ -34,24 +35,22 @@ export function PlayerLink({ name, online, url }: { name?: string; online?: bool
 
 export type StripItem = { key: string; card: Card; shiny: boolean };
 
-/** A row of 3D cards of a fixed width (wraps); `null` items are empty slots. */
-export function CardStrip<T extends StripItem>({ items, width = 120, label, onPick, caption, empty, emptySlot, selected }: { items: (T | null)[]; width?: number; label: (it: T) => string; onPick?: (it: T) => void; caption?: (it: T) => ReactNode; empty?: ReactNode; emptySlot?: (i: number) => ReactNode; selected?: string | null }) {
-  const [box, setBox] = useState<HTMLElement | null>(null);
+/** A row of cards of a fixed width (wraps); `null` items are empty slots. */
+export function CardStrip<T extends StripItem>({ items, width = 120, label, onPick, caption, empty, emptySlot, selected, faceDown }: { items: (T | null)[]; width?: number; label: (it: T) => string; onPick?: (it: T) => void; caption?: (it: T) => ReactNode; empty?: ReactNode; emptySlot?: (i: number) => ReactNode; selected?: string | null; faceDown?: (it: T) => boolean }) {
   return (
-    <div className="strip" ref={setBox} style={{ ['--cw' as string]: `${width}px` }}>
-      {box &&
-        items.map((it, i) =>
-          it ? (
-            <div className="slotcell" key={it.key}>
-              <CardSlot k={it.key} card={it.card} shiny={it.shiny} clip={box} label={label(it)} className={selected === it.key ? 'on out' : undefined} onClick={onPick && (() => onPick(it))} />
-              {caption && <div className="caption">{caption(it)}</div>}
-            </div>
-          ) : (
-            <div className="slotcell" key={`empty-${i}`}>
-              {emptySlot?.(i)}
-            </div>
-          ),
-        )}
+    <div className="strip" style={{ ['--cw' as string]: `${width}px` }}>
+      {items.map((it, i) =>
+        it ? (
+          <div className="slotcell" key={it.key}>
+            <CardSlot card={it.card} shiny={it.shiny} faceDown={faceDown?.(it)} label={label(it)} className={selected === it.key ? 'on' : undefined} onClick={onPick && (() => onPick(it))} />
+            {caption && <div className="caption">{caption(it)}</div>}
+          </div>
+        ) : (
+          <div className="slotcell" key={`empty-${i}`}>
+            {emptySlot?.(i)}
+          </div>
+        ),
+      )}
       {!items.length && empty && <p className="muted">{empty}</p>}
     </div>
   );
@@ -69,9 +68,8 @@ export function Progress({ value, max }: { value: number; max: number }) {
 /** Details of any card (catalogue, someone else's collection): read-only. */
 export function CardInfoPanel({ k, card, shiny, owned, extra, onClose }: { k: string; card: Card; shiny: boolean; owned?: number; extra?: ReactNode; onClose: () => void }) {
   const s = RARITY_STYLE[card.rarity];
-  const [summary, setSummary] = useState<string | null | undefined>(undefined);
+  const [summary, setSummary] = useKept<string | null | undefined>(`summary:${card.id}`, undefined);
   useEffect(() => {
-    setSummary(undefined);
     apiGet<{ summary: string | null }>(`/cards/${card.id}`, { ttl: Infinity })
       .then((d) => setSummary(d.summary ?? null))
       .catch(() => setSummary(null));
@@ -79,7 +77,7 @@ export function CardInfoPanel({ k, card, shiny, owned, extra, onClose }: { k: st
   return (
     <Panel onClose={onClose} label={card.title}>
       <div className="ptop">
-        <BigCard k={k} card={card} shiny={shiny} />
+        <BigCard card={card} shiny={shiny} />
         <div className="ptxt">
           <span className="rarity-tag" style={{ color: s.color }}>
             {`${s.label}${shiny ? ' · brillante' : ''}`}
@@ -91,16 +89,16 @@ export function CardInfoPanel({ k, card, shiny, owned, extra, onClose }: { k: st
       <div className="kv">
         <div>
           <b>{card.atk}</b>
-          <span>ATTAQUE</span>
+          <span>Attaque</span>
         </div>
         <div>
           <b>{card.def}</b>
-          <span>DÉFENSE</span>
+          <span>Défense</span>
         </div>
         {card.q_score != null && (
           <div>
             <b>{card.q_score}</b>
-            <span>Q-SCORE</span>
+            <span>Q-score</span>
           </div>
         )}
       </div>

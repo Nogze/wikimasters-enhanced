@@ -1,11 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { Card } from '../lib/types';
 import { CardSlot, Icon, ICON } from './kit';
-import { setDealDirection } from './pins';
 
 // A board of cards, paged to fit: as many columns and rows as the board holds at the chosen card
-// size, never a scrollbar. Each card is a CardSlot (an HTML button with its 3D card on top).
-// Paging by the arrows, the wheel or the ← → keys deals the next page in from that side.
+// size, never a scrollbar. Each card is a CardSlot. Pages turn with the arrows, the wheel or ← →.
 
 export type GridItem = { key: string; card: Card; shiny: boolean };
 export type CardSize = 'S' | 'M' | 'L';
@@ -94,7 +92,6 @@ export function CardGrid<T extends GridItem>({ items, resetKey, size = 'M', sele
     setPage(Math.floor(firstRef.current / per));
   }, [per]);
   useLayoutEffect(() => {
-    setDealDirection(1);
     firstRef.current = 0;
     setPage(0);
   }, [resetKey]);
@@ -103,7 +100,6 @@ export function CardGrid<T extends GridItem>({ items, resetKey, size = 'M', sele
   const go = (to: number) => {
     const n = Math.max(0, Math.min(to, pages - 1));
     if (n === p) return;
-    setDealDirection(n > p ? 1 : -1);
     setPage(n);
   };
   const goRef = useRef(go);
@@ -157,12 +153,10 @@ export function CardGrid<T extends GridItem>({ items, resetKey, size = 'M', sele
           {shown.map((it) => (
             <div className="slotcell" key={it.key}>
               <CardSlot
-                k={it.key}
                 card={it.card}
                 shiny={it.shiny}
-                clip={boardEl}
                 label={label(it)}
-                className={[selected === it.key ? 'on out' : '', slotClass?.(it) ?? ''].filter(Boolean).join(' ') || undefined}
+                className={[selected === it.key ? 'on' : '', slotClass?.(it) ?? ''].filter(Boolean).join(' ') || undefined}
                 onClick={onPick && (() => onPick(it))}
               />
               {caption && <div className="caption">{caption(it)}</div>}

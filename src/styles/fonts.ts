@@ -1,5 +1,11 @@
-// The game's typefaces, bundled (no font CDN: the extension talks to wiki-masters only). The card
-// and pack textures draw with these family names too (three/cardTexture.ts, packTexture.ts).
+// The typefaces, bundled (no font CDN: the extension talks to wiki-masters only). Outfit for the
+// interface; Rubik, Source Sans 3 and Crimson Pro for the card and pack art (three/cardTexture.ts,
+// packTexture.ts).
+import '@fontsource/outfit/400.css';
+import '@fontsource/outfit/500.css';
+import '@fontsource/outfit/600.css';
+import '@fontsource/outfit/700.css';
+import '@fontsource/outfit/800.css';
 import '@fontsource/rubik/500.css';
 import '@fontsource/rubik/700.css';
 import '@fontsource/rubik/800.css';

@@ -9,6 +9,7 @@ import { useNow } from '../lib/time';
 import * as trades from '../lib/trades';
 import type { PartnerCard, Person, Trade } from '../lib/trades';
 import type { Card } from '../lib/types';
+import { useKept } from '../lib/kept';
 import { CardGrid, savedSize, type CardSize } from './CardGrid';
 import { norm, SizeButtons } from './Collection';
 import { Icon, ICON, Modal, Panel, SearchField, useArmed, useToast } from './kit';
@@ -19,9 +20,9 @@ import { Icon, ICON, Modal, Panel, SearchField, useArmed, useToast } from './kit
 
 type Tab = 'received' | 'sent' | 'history';
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'received', label: 'REÇUES' },
-  { id: 'sent', label: 'ENVOYÉES' },
-  { id: 'history', label: 'HISTORIQUE' },
+  { id: 'received', label: 'Reçues' },
+  { id: 'sent', label: 'Envoyées' },
+  { id: 'history', label: 'Historique' },
 ];
 type Mode = { kind: 'list' } | { kind: 'view'; trade: Trade } | { kind: 'compose'; peer: Person | null; counterOf?: Trade };
 type Side = 'give' | 'take';
@@ -40,7 +41,7 @@ function describe(items: trades.TradeItem[], wb: number) {
   const money = wb ? `${fmt(wb)} WB` : '';
   return [cards, money].filter(Boolean).join(' · ') || 'Rien';
 }
-const statusOf = (t: Trade) => trades.STATUS[t.status] ?? { label: t.status.toUpperCase(), color: '#9aa6c8' };
+const statusOf = (t: Trade) => trades.STATUS[t.status] ?? { label: t.status.toUpperCase(), color: '#a3a3a3' };
 
 // ---------------------------------------------------------------- list
 
@@ -254,7 +255,7 @@ function OfferPanel({ peer, counterOf, picked, onRemove, giveWb, takeWb, setGive
 }
 
 function PeerPicker({ onPick, onClose }: { onPick: (p: Person) => void; onClose: () => void }) {
-  const [friends, setFriends] = useState<(Person & { online?: boolean })[] | null>(null);
+  const [friends, setFriends] = useKept<(Person & { online?: boolean })[] | null>('friends:list', null);
   const [q, setQ] = useState('');
   const [found, setFound] = useState<Person[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -294,8 +295,8 @@ export function TradesScreen() {
   const me = useSession()?.user.id ?? '';
   const [tab, setTab] = useState<Tab>('received');
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
-  const [active, setActive] = useState<Trade[] | null>(null);
-  const [history, setHistory] = useState<Trade[] | null>(null);
+  const [active, setActive] = useKept<Trade[] | null>('trades:active', null);
+  const [history, setHistory] = useKept<Trade[] | null>('trades:history', null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [size, setSize] = useState<CardSize>(savedSize);
@@ -306,7 +307,7 @@ export function TradesScreen() {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [mine, setMine] = useState<Item[] | null>(null);
-  const [theirs, setTheirs] = useState<PartnerCard[] | null>(null);
+  const [theirs, setTheirs] = useKept<PartnerCard[] | null>(`trades:theirs:${mode.kind === 'compose' ? mode.peer?.id ?? '' : ''}|${debounced}`, null);
   const [theirsMore, setTheirsMore] = useState(false);
   const [theirsPage, setTheirsPage] = useState(0);
   const [picked, setPicked] = useState<Map<string, Picked>>(new Map());
@@ -346,7 +347,6 @@ export function TradesScreen() {
   useEffect(() => {
     if (!peer) return;
     let off = false;
-    setTheirs(null);
     trades.partnerCards(peer, debounced, 0).then(
       (r) => !off && (setTheirs(r.items), setTheirsMore(r.hasMore), setTheirsPage(0)),
       (e) => !off && (setTheirs([]), setToast(e instanceof ApiError ? e.message : 'Erreur réseau')),
@@ -490,9 +490,9 @@ export function TradesScreen() {
             {composing &&
               (
                 [
-                  { id: 'mine', label: 'MES CARTES', count: counts.give },
-                  { id: 'theirs', label: `CARTES DE ${peer!.username.toUpperCase()}`, count: counts.take },
-                  { id: 'offer', label: 'L’OFFRE', count: counts.give + counts.take },
+                  { id: 'mine', label: 'Mes cartes', count: counts.give },
+                  { id: 'theirs', label: `Cartes de ${peer!.username}`, count: counts.take },
+                  { id: 'offer', label: 'L’offre', count: counts.give + counts.take },
                 ] as const
               ).map((c) => (
                 <button key={c.id} className={`chip${source === c.id ? ' on' : ''}`} aria-pressed={source === c.id} onClick={() => (setSource(c.id), setQuery(''))}>

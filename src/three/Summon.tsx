@@ -41,7 +41,7 @@ export type StageFx = {
   speed: number;
 };
 
-export const IDLE_TINT = '#8fb4ff';
+export const IDLE_TINT = '#7fe8b8';
 export const makeStageFx = (): StageFx => ({
   bloom: 1,
   chroma: 0,
@@ -94,16 +94,16 @@ const skyFragment = /* glsl */ `
   void main() {
     vec2 uv = vUv;
     // Deep night at the top, a luminous blue horizon behind the circle.
-    vec3 top = vec3(0.004, 0.006, 0.03);
-    vec3 mid = vec3(0.015, 0.03, 0.12);
-    vec3 hor = vec3(0.03, 0.07, 0.32);
+    vec3 top = vec3(0.004, 0.005, 0.005);
+    vec3 mid = vec3(0.012, 0.017, 0.015);
+    vec3 hor = vec3(0.035, 0.065, 0.052);
     vec3 col = mix(hor, mid, smoothstep(0.34, 0.6, uv.y));
     col = mix(col, top, smoothstep(0.6, 1.0, uv.y));
-    col = mix(vec3(0.01, 0.015, 0.05), col, smoothstep(0.18, 0.34, uv.y));
+    col = mix(vec3(0.008, 0.01, 0.009), col, smoothstep(0.18, 0.34, uv.y));
     // Nebula drifting slowly, catching the tint.
     float n = fbm(uv * vec2(4.0, 2.4) + vec2(uTime * 0.012, -uTime * 0.004));
     float n2 = fbm(uv * vec2(7.0, 4.0) - vec2(uTime * 0.008, 0.0));
-    vec3 neb = mix(vec3(0.12, 0.05, 0.3), uTint * 0.3, 0.25);
+    vec3 neb = mix(vec3(0.05, 0.08, 0.07), uTint * 0.3, 0.25);
     col += neb * smoothstep(0.5, 0.95, n) * (0.5 + 0.5 * n2) * smoothstep(0.3, 0.7, uv.y) * (0.8 + uPower * 0.6);
     // Horizon glow behind the circle.
     float d = length((uv - vec2(0.5, 0.33)) * vec2(1.4, 3.2));
@@ -115,7 +115,7 @@ const skyFragment = /* glsl */ `
     vec2 f = fract(g) - 0.5 - (vec2(hash(id + 1.7), hash(id + 3.1)) - 0.5) * 0.6;
     float s = step(0.982, h) * (1.0 - smoothstep(0.0, 0.12, length(f)));
     s *= 0.55 + 0.45 * sin(uTime * (1.0 + h * 3.0) + h * 60.0);
-    col += vec3(0.8, 0.85, 1.0) * s * smoothstep(0.32, 0.7, uv.y) * (1.0 + step(0.997, h) * 2.0);
+    col += vec3(0.9, 0.95, 0.92) * s * smoothstep(0.32, 0.7, uv.y) * (1.0 + step(0.997, h) * 2.0);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -144,7 +144,7 @@ const floorFragment = /* glsl */ `
   void main() {
     vec2 p = (vUv - 0.5) * 2.0;
     float d = length(p);
-    vec3 col = vec3(0.006, 0.01, 0.035) + uTint * exp(-d * 3.0) * (0.06 + uPower * 0.2);
+    vec3 col = vec3(0.007, 0.009, 0.008) + uTint * exp(-d * 3.0) * (0.06 + uPower * 0.2);
     float a = (1.0 - smoothstep(0.55, 1.0, d));
     gl_FragColor = vec4(col, a);
   }
@@ -481,7 +481,7 @@ export const Orb = forwardRef<THREE.Group, { fx: StageFx }>(function Orb({ fx },
 export function StageBackdrop({ fx, motes = true }: { fx: StageFx; motes?: boolean }) {
   return (
     <>
-      <color attach="background" args={['#02030a']} />
+      <color attach="background" args={['#0a0a0a']} />
       <StageDriver fx={fx} />
       <Sky fx={fx} />
       <Rays fx={fx} />

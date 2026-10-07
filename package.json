@@ -1,7 +1,7 @@
 {
   "name": "wikimasters-enhanced",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Unofficial enhanced interface for wiki-masters.com (browser extension)",
   "type": "module",
   "repository": {
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@fontsource/crimson-pro": "^5.3.0",
+    "@fontsource/outfit": "^5.3.0",
     "@fontsource/rubik": "^5.3.0",
     "@fontsource/source-sans-3": "^5.3.0",
     "@react-three/fiber": "^9.8.1",
