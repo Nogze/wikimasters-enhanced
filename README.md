@@ -1,6 +1,8 @@
 # Wikimasters Enhanced
 
-An unofficial browser extension that replaces the interface of [wiki-masters.com](https://www.wiki-masters.com) with a new one: 3D pack openings, a 3D card collection, market (with last-second bids), trades, friends, messages, guild, battles, achievements and leaderboard.
+An unofficial browser extension that replaces the interface of [wiki-masters.com](https://www.wiki-masters.com) with a new one: 3D pack openings, a card collection, market (with last-second bids), trades, friends, messages, guild, battles, achievements and leaderboard.
+
+Only pack openings use 3D: everywhere else the cards are flat images that appear instantly, with a lift on hover, a foil shine on shiny cards and a glow on UR and L cards. Screens keep their last content and refresh in the background, so coming back to one never waits on "Chargement…".
 
 You play with your own wiki-masters account, on their servers. The extension talks to no one else: card images come from Wikimedia, and wiki-masters' anti-bot check from Cloudflare, as on their site.
 
